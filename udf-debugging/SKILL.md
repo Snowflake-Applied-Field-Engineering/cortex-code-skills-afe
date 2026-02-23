@@ -93,6 +93,19 @@ WHERE RESOURCE_ATTRIBUTES['snow.executable.type'] IN ('FUNCTION', 'PROCEDURE')
   AND TIMESTAMP > DATEADD('hour', -1, CURRENT_TIMESTAMP());
 ```
 
+### ⚠️ Telemetry Ingestion Latency
+
+**Important:** Telemetry data may take a few seconds to appear in the event table after UDF execution. If you query the event table immediately after executing a UDF and see no results:
+
+1. **Wait 5-10 seconds** before querying again
+2. **Retry the query** up to 3 times with delays between attempts
+3. Only conclude that telemetry is missing after retries fail
+
+This latency applies to:
+- Initial telemetry collection after enabling LOG_LEVEL/TRACE_LEVEL
+- Iterative debugging cycles (modify UDF → execute → check logs → repeat)
+- Any scenario where you expect new telemetry data
+
 ---
 
 ## ⚠️ Telemetry-First Debugging Principle

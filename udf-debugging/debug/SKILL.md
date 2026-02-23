@@ -56,7 +56,7 @@ SHOW USER FUNCTIONS LIKE '<function_name>' IN SCHEMA <database>.<schema>;
 
 ### Step 2: Verify Event Table Configuration
 
-**Goal:** Ensure logs are being collected
+**Goal:** Ensure logs, metrics, and traces are being collected
 
 **Load reference:** [../references/observability-parameters.md](../references/observability-parameters.md)
 
@@ -150,7 +150,38 @@ ORDER BY RECORD_TYPE;
 - `SPAN_EVENT` - Custom trace events
 - `METRIC` - Metrics data
 
-**If NO telemetry data is found:**
+---
+
+#### ⚠️ Handling Telemetry Ingestion Latency
+
+**Important:** Telemetry data may take several seconds to appear in the event table after UDF execution due to ingestion latency. **You MUST retry before concluding telemetry is missing.**
+
+**Retry procedure when no telemetry data is found:**
+
+1. **First query returns no results** → Wait 5 seconds, then retry the query
+2. **Second query returns no results** → Wait 10 seconds, then retry the query  
+3. **Third query returns no results** → Now conclude telemetry is actually missing
+
+**This retry procedure applies in all scenarios:**
+- After initially enabling telemetry collection (LOG_LEVEL, TRACE_LEVEL, etc.)
+- After executing a UDF for the first time with telemetry enabled
+- During iterative debugging cycles (modify UDF → execute → check logs → repeat)
+- Any time you expect new telemetry data from a recent UDF execution
+
+**Example workflow:**
+```
+Execute UDF → Query event table → No results
+  ↓
+Wait 5 seconds → Query again → No results  
+  ↓
+Wait 10 seconds → Query again → No results
+  ↓
+NOW conclude telemetry is missing and proceed to enable it
+```
+
+---
+
+**If NO telemetry data is found (after retries):**
 
 **⚠️ MANDATORY STOPPING POINT** - Do not proceed with code analysis.
 
@@ -167,8 +198,8 @@ Present to user:
 
 Return to Step 2 to enable telemetry, then ask user to:
 1. Re-execute the UDF to generate telemetry data
-2. Wait a few seconds for data to appear
-3. Return to this step to verify data exists
+2. **Wait 10-15 seconds** for data to be ingested into the event table
+3. Return to this step to verify data exists (with retry logic)
 
 **If telemetry data IS found:**
 - Summarize what data types are available (logs, spans, events, metrics)

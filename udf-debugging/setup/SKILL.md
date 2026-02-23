@@ -349,7 +349,18 @@ ALTER DATABASE <db> SET LOG_LEVEL = 'INFO';
    SELECT <udf_name>(<test_params>);
    ```
 
-3. **Check for logs (may take a few seconds):**
+3. **Check for logs with retry logic:**
+
+   **⚠️ Important: Telemetry Ingestion Latency**
+   
+   Telemetry data may take several seconds to appear in the event table after UDF execution. **You MUST retry before concluding that telemetry collection is not working.**
+
+   **Retry procedure:**
+   1. **First query** → Wait 5 seconds after UDF execution, then query
+   2. **No results** → Wait 10 more seconds, then query again
+   3. **Still no results** → Wait 10 more seconds, then query a third time
+   4. **After 3 retries with no results** → Investigate configuration issues
+
    ```sql
    SELECT *
    FROM SNOWFLAKE.TELEMETRY.EVENTS
@@ -359,10 +370,24 @@ ALTER DATABASE <db> SET LOG_LEVEL = 'INFO';
    LIMIT 10;
    ```
 
-**If no logs appear:**
+   **Example verification workflow:**
+   ```
+   Execute UDF
+     ↓
+   Wait 5 seconds → Query event table → No results?
+     ↓
+   Wait 10 seconds → Query again → No results?
+     ↓
+   Wait 10 seconds → Query again → No results?
+     ↓
+   NOW investigate configuration issues
+   ```
+
+**If no logs appear after retries:**
 - Verify the UDF contains logging statements (see [python-logging.md](../references/python-logging.md))
+- Verify the UDF includes `snowflake-telemetry-python` package and `from snowflake import telemetry` import
 - Check that UDF's LOG_LEVEL is not more restrictive than collection level
-- Wait a few more seconds (telemetry has slight latency)
+- Verify TRACE_LEVEL is set to 'ALWAYS' for span data
 
 ---
 
